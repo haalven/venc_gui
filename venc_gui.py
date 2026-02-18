@@ -155,7 +155,7 @@ class MainWindow(QWidget):
         self.cmd_edit.setText(cmd_str)
 
     def copy_to_clipboard(self):
-        QApplication.clipboard().setText(self.cmd_edit.text().strip())
+        QApplication.clipboard().setText(self.cmd_edit.text().strip()) # type: ignore
 
 
 def main():
