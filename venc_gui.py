@@ -33,7 +33,7 @@ class MainWindow(QWidget):
         self.codec_combo.currentIndexChanged.connect(self.update_command)
 
         # --- Resize controls ---
-        self.resize_x_edit = QLineEdit('12080')
+        self.resize_x_edit = QLineEdit('1280')
         self.resize_y_edit = QLineEdit('720')
         self.resize_x_edit.textChanged.connect(self.update_command)
         self.resize_y_edit.textChanged.connect(self.update_command)
@@ -134,7 +134,7 @@ class MainWindow(QWidget):
             return
 
         qv = self.q_slider.value()
-        resize_x = self.resize_x_edit.text().strip() or '12080'
+        resize_x = self.resize_x_edit.text().strip() or '1280'
         resize_y = self.resize_y_edit.text().strip() or '720'
         scale_filter = f'scale_vt=w={resize_x}:h={resize_y}'
 
