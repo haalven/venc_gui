@@ -32,6 +32,12 @@ class MainWindow(QWidget):
         self.codec_combo.setCurrentIndex(0)
         self.codec_combo.currentIndexChanged.connect(self.update_command)
 
+        # --- Resize controls ---
+        self.resize_x_edit = QLineEdit('12080')
+        self.resize_y_edit = QLineEdit('720')
+        self.resize_x_edit.textChanged.connect(self.update_command)
+        self.resize_y_edit.textChanged.connect(self.update_command)
+
         # --- Quality slider (1..100, default 66) ---
         self.q_slider = QSlider(Qt.Orientation.Horizontal)
         self.q_slider.setRange(1, 100)
@@ -65,8 +71,15 @@ class MainWindow(QWidget):
         inp_row.addWidget(self.browse_btn)
         grid.addLayout(inp_row, 0, 1)
 
-        grid.addWidget(QLabel('Video codec'), 1, 0)
-        grid.addWidget(self.codec_combo, 1, 1)
+        grid.addWidget(QLabel('Resize (x, y)'), 1, 0)
+        resize_row = QHBoxLayout()
+        resize_row.addWidget(self.resize_x_edit)
+        resize_row.addWidget(QLabel('x'))
+        resize_row.addWidget(self.resize_y_edit)
+        grid.addLayout(resize_row, 1, 1)
+
+        grid.addWidget(QLabel('Video codec'), 2, 0)
+        grid.addWidget(self.codec_combo, 2, 1)
 
         q_row = QHBoxLayout()
         q_row.addWidget(self.q_slider, 1)
@@ -74,11 +87,11 @@ class MainWindow(QWidget):
         q_box = QVBoxLayout()
         q_box.addWidget(self.q_hint)
         q_box.addLayout(q_row)
-        grid.addWidget(QLabel('Video quality'), 2, 0)
-        grid.addLayout(q_box, 2, 1)
+        grid.addWidget(QLabel('Video quality'), 3, 0)
+        grid.addLayout(q_box, 3, 1)
 
-        grid.addWidget(QLabel('Audio option'), 3, 0)
-        grid.addWidget(self.audio_combo, 3, 1)
+        grid.addWidget(QLabel('Audio option'), 4, 0)
+        grid.addWidget(self.audio_combo, 4, 1)
 
         bottom = QHBoxLayout()
         bottom.addWidget(self.cmd_edit, 1)
@@ -121,6 +134,9 @@ class MainWindow(QWidget):
             return
 
         qv = self.q_slider.value()
+        resize_x = self.resize_x_edit.text().strip() or '12080'
+        resize_y = self.resize_y_edit.text().strip() or '720'
+        scale_filter = f'scale_vt=w={resize_x}:h={resize_y}'
 
         # Video codec
         if self.codec_combo.currentText().startswith('AVC'):
@@ -139,13 +155,20 @@ class MainWindow(QWidget):
 
         outp = self.build_output_path(inp)
 
-        cmd = ['ffmpeg', '-hwaccel', 'videotoolbox', '-i', inp, *v_opts, '-q:v', str(qv), *a_opts, outp]
-        cmd_str = ' '.join(self.q(x) if i in {3, 5, len(cmd) - 1} else x
-                           for i, x in enumerate(cmd))
-        # Indices 3, 5, last correspond to: videotoolbox? (no), input path is 5? keep robust:
-        # We'll just re-quote the paths explicitly:
+        cmd = [
+            'ffmpeg',
+            '-hwaccel', 'videotoolbox',
+            '-hwaccel_output_format', 'videotoolbox_vld',
+            '-i', inp,
+            '-vf', scale_filter,
+            *v_opts,
+            '-q:v', str(qv),
+            *a_opts,
+            outp,
+        ]
         cmd_str = (
-            f'ffmpeg -hwaccel videotoolbox -i {self.q(inp)} '
+            f'ffmpeg -hwaccel videotoolbox -hwaccel_output_format videotoolbox_vld -i {self.q(inp)} '
+            f'-vf {self.q(scale_filter)} '
             + ' '.join(v_opts)
             + f' -q:v {qv} '
             + ' '.join(a_opts)
