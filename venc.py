@@ -7,7 +7,7 @@ from pathlib import Path
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QLabel, QLineEdit, QPushButton, QComboBox, QSlider,
-    QFileDialog, QHBoxLayout, QVBoxLayout, QGridLayout
+    QFileDialog, QHBoxLayout, QVBoxLayout, QGridLayout, QCheckBox
 )
 
 
@@ -33,6 +33,11 @@ class MainWindow(QWidget):
         self.codec_combo.currentIndexChanged.connect(self.update_command)
 
         # --- Resize controls ---
+        self.resize_enabled_checkbox = QCheckBox('Enable resize')
+        self.resize_enabled_checkbox.setChecked(True)
+        self.resize_enabled_checkbox.toggled.connect(self.toggle_resize_controls)
+        self.resize_enabled_checkbox.toggled.connect(self.update_command)
+
         self.resize_x_edit = QLineEdit('1280')
         self.resize_y_edit = QLineEdit('720')
         self.resize_x_edit.textChanged.connect(self.update_command)
@@ -72,11 +77,14 @@ class MainWindow(QWidget):
         grid.addLayout(inp_row, 0, 1)
 
         grid.addWidget(QLabel('Resize (x, y)'), 1, 0)
+        resize_box = QVBoxLayout()
+        resize_box.addWidget(self.resize_enabled_checkbox)
         resize_row = QHBoxLayout()
         resize_row.addWidget(self.resize_x_edit)
         resize_row.addWidget(QLabel('x'))
         resize_row.addWidget(self.resize_y_edit)
-        grid.addLayout(resize_row, 1, 1)
+        resize_box.addLayout(resize_row)
+        grid.addLayout(resize_box, 1, 1)
 
         grid.addWidget(QLabel('Video codec'), 2, 0)
         grid.addWidget(self.codec_combo, 2, 1)
@@ -105,6 +113,7 @@ class MainWindow(QWidget):
 
         self.setLayout(root)
 
+        self.toggle_resize_controls(self.resize_enabled_checkbox.isChecked())
         self.update_command()
 
     def pick_file(self):
@@ -127,6 +136,10 @@ class MainWindow(QWidget):
         # Spec: output path is inputpath + '.videotoolbox.mp4'
         return input_path + '.videotoolbox.mp4'
 
+    def toggle_resize_controls(self, checked: bool):
+        self.resize_x_edit.setEnabled(checked)
+        self.resize_y_edit.setEnabled(checked)
+
     def update_command(self):
         inp = self.input_edit.text().strip()
         if not inp:
@@ -137,6 +150,7 @@ class MainWindow(QWidget):
         resize_x = self.resize_x_edit.text().strip() or '1280'
         resize_y = self.resize_y_edit.text().strip() or '720'
         scale_filter = f'scale_vt=w={resize_x}:h={resize_y}'
+        resize_enabled = self.resize_enabled_checkbox.isChecked()
 
         # Video codec
         if self.codec_combo.currentText().startswith('AVC'):
@@ -160,20 +174,32 @@ class MainWindow(QWidget):
             '-hwaccel', 'videotoolbox',
             '-hwaccel_output_format', 'videotoolbox_vld',
             '-i', inp,
-            '-vf', scale_filter,
+        ]
+        if resize_enabled:
+            cmd.extend(['-vf', scale_filter])
+
+        cmd.extend([
             *v_opts,
             '-q:v', str(qv),
             *a_opts,
             outp,
+        ])
+
+        cmd_str_parts = [
+            'ffmpeg',
+            '-hwaccel videotoolbox',
+            '-hwaccel_output_format videotoolbox_vld',
+            f'-i {self.q(inp)}',
         ]
-        cmd_str = (
-            f'ffmpeg -hwaccel videotoolbox -hwaccel_output_format videotoolbox_vld -i {self.q(inp)} '
-            f'-vf {self.q(scale_filter)} '
-            + ' '.join(v_opts)
-            + f' -q:v {qv} '
-            + ' '.join(a_opts)
-            + f' {self.q(outp)}'
-        )
+        if resize_enabled:
+            cmd_str_parts.append(f'-vf {self.q(scale_filter)}')
+        cmd_str_parts.extend([
+            ' '.join(v_opts),
+            f'-q:v {qv}',
+            ' '.join(a_opts),
+            self.q(outp),
+        ])
+        cmd_str = ' '.join(cmd_str_parts)
 
         self.cmd_edit.setText(cmd_str)
 
