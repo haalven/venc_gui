@@ -1,4 +1,3 @@
-#! /Users/xhalc/python-venv/.venv/bin/python3
 
 import os
 import shlex
