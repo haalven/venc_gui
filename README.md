@@ -15,3 +15,7 @@ Syntax:
   -tag:v hvc1
   -c:a aac_at
   output.mp4`
+
+## create a macOS app
+
+`python3 -m PyInstaller --windowed --name "venc" venc.py`
