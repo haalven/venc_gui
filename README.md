@@ -16,6 +16,6 @@ Syntax:
   -c:a aac_at
   output.mp4`
 
-## create a macOS app
+## create macOS app bundle
 
 `python3 -m PyInstaller --windowed --name "venc" venc.py`
